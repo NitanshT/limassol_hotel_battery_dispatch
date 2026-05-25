@@ -44,6 +44,8 @@ class DispatchPolicyTests(SimpleTestCase):
             self.assertLessEqual(result.battery_discharge_kw, 200.0)
 
     def test_surplus_solar_charges_battery_before_curtailment(self):
+        config = BatteryConfig(initial_soc_pct=10.0)
+
         rows = [
             DispatchInput(
                 timestamp=datetime(2025, 7, 7, 12, 0, tzinfo=CYPRUS_TZ),
@@ -53,12 +55,12 @@ class DispatchPolicyTests(SimpleTestCase):
             )
         ]
 
-        result = run_greedy_dispatch(rows)[0]
+        result = run_greedy_dispatch(rows, config=config)[0]
 
         self.assertEqual(result.solar_to_load_kw, 20.0)
         self.assertGreater(result.battery_charge_kw, 0.0)
         self.assertEqual(result.grid_import_kw, 0.0)
-        self.assertGreater(result.soc_pct, 50.0)
+        self.assertGreater(result.soc_pct, config.initial_soc_pct)
 
     def test_battery_does_not_discharge_at_night_rate(self):
         config = BatteryConfig(initial_soc_pct=80.0)

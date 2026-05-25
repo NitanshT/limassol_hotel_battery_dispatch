@@ -488,6 +488,15 @@ The report is a local HTML weekly summary suitable for take-home review. In prod
 
 ---
 
+## What-if analysis
+
+The app includes a small stretch-feature form at:
+
+```text
+http://127.0.0.1:8000/reports/what-if/
+
+---
+
 ## Management commands
 
 Create input data only:
@@ -594,7 +603,7 @@ The dispatch does not account for cycle degradation or warranty constraints. Tha
 
 With another day, I would add:
 
-1. A small what-if form to vary PV size, battery capacity, and tariff assumptions.
+1. Extend the what-if form to include tariff assumptions, grid charging, battery degradation cost, and export rules.
 2. A real EAC commercial tariff parser or manually encoded commercial tariff.
 3. Configurable night-rate grid charging.
 4. Exportable weekly PDF report.

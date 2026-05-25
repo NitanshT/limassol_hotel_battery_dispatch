@@ -45,7 +45,26 @@
             color: var(--muted);
             line-height: 1.5;
         }
+        
+        .header-actions {
+            margin-top: 16px;
+        }
 
+        .button-link {
+            display: inline-block;
+            background: var(--accent);
+            color: #ffffff;
+            text-decoration: none;
+            font-weight: 700;
+            padding: 10px 16px;
+            border-radius: 10px;
+            border: 1px solid var(--accent);
+            box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08);
+        }
+
+        .button-link:hover {
+            filter: brightness(0.95);
+        }
         .grid {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -167,6 +186,11 @@
         <p>
             Limassol hotel behind-the-meter battery dispatch.
             Metrics are calculated from stored 15-minute time-series and persisted dispatch results.
+        </p>
+        <p class="header-actions">
+            <a class="button-link" href="{% url 'what-if-report' %}">
+                Run PV/battery what-if analysis
+            </a>
         </p>
     </div>
 
