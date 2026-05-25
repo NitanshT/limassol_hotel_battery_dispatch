@@ -47,7 +47,7 @@ def load_hourly_solar_from_renewables_ninja_csv(csv_path: Path) -> list[float]:
         )
 
     relevant_lines = lines[header_index:]
-    reader = csv.DictReader(relevant_lines)
+    reader = csv.DictReader(relevant_lines, skipinitialspace=True)
 
     if reader.fieldnames is None:
         raise ValueError("CSV file has no header row.")
@@ -189,24 +189,37 @@ def get_solar_15min_series(
 
 def _find_csv_header_index(lines: list[str]) -> int | None:
     for index, line in enumerate(lines):
-        lower = line.lower()
-        if "time" in lower and (
-            "electricity" in lower
-            or "solar" in lower
-            or "pv" in lower
-            or "power" in lower
-        ):
+        stripped = line.strip()
+
+        # renewables.ninja CSV exports include metadata rows such as:
+        # "# Units: time in UTC, local_time in Europe/Athens, electricity in kW"
+        # Those mention "time" and "electricity", but they are not the table header.
+        if not stripped or stripped.startswith("#"):
+            continue
+
+        columns = [column.strip().lower() for column in stripped.split(",")]
+
+        has_time_column = any(
+            column in {"time", "datetime", "timestamp", "date", "local_time"}
+            for column in columns
+        )
+        has_value_column = any(
+            column in {"electricity", "solar_kw", "pv_kw", "generation_kw", "power"}
+            for column in columns
+        )
+
+        if has_time_column and has_value_column:
             return index
 
     return None
 
 
 def _find_column(fieldnames: list[str], candidates: tuple[str, ...]) -> str | None:
-    normalized = {field.strip().lower(): field for field in fieldnames}
+    for field in fieldnames:
+        normalized = field.strip().lower()
 
-    for candidate in candidates:
-        if candidate in normalized:
-            return normalized[candidate]
+        if normalized in candidates:
+            return field
 
     return None
 
