@@ -105,3 +105,51 @@ Stop the server with:
 ```text
 Ctrl+C
 ```
+
+## Demo data bootstrap
+
+The project stores the required 15-minute input series in SQLite.
+
+To create one representative week:
+
+```powershell
+python manage.py bootstrap_demo --force
+```
+
+This creates:
+
+- `solar_kw`
+- `load_kw`
+- `grid_price_eur_per_kwh`
+
+for 672 intervals:
+
+```text
+7 days × 24 hours × 4 intervals per hour = 672 rows
+```
+
+### Solar data
+
+The preferred solar source is a renewables.ninja hourly CSV for Limassol and a 200 kWp PV system.
+
+Expected CSV location:
+
+```text
+data/renewables_ninja_limassol_hourly.csv
+```
+
+Expected common columns:
+
+```text
+time,electricity
+```
+
+If the CSV exists, the app loads the hourly renewables.ninja values and resamples them to 15-minute intervals by repeating each hourly average power value four times.
+
+That preserves hourly energy:
+
+```text
+hourly_kw × 1 hour = hourly_kw × 0.25 hour × 4
+```
+
+If the CSV is not present, the app uses a deterministic fallback solar profile so the reviewer can still run the project locally. The fallback is only a run-local convenience, not a replacement for renewables.ninja in the final submitted analysis.
