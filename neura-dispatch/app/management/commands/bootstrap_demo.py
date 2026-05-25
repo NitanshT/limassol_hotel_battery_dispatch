@@ -4,7 +4,7 @@ from pathlib import Path
 
 from django.core.management.base import BaseCommand
 
-from app.services.data_import import bootstrap_demo_timeseries, run_and_persist_dispatch
+from app.services.data_pipeline import bootstrap_demo_timeseries, run_and_persist_dispatch
 
 
 class Command(BaseCommand):

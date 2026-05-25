@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from django.core.management.base import BaseCommand
 
-from app.services.data_import import run_and_persist_dispatch
+from app.services.data_pipeline import run_and_persist_dispatch
 
 
 class Command(BaseCommand):
