@@ -153,3 +153,58 @@ hourly_kw × 1 hour = hourly_kw × 0.25 hour × 4
 ```
 
 If the CSV is not present, the app uses a deterministic fallback solar profile so the reviewer can still run the project locally. The fallback is only a run-local convenience, not a replacement for renewables.ninja in the final submitted analysis.
+
+## Run dispatch
+
+After bootstrapping the input time series, run the greedy battery dispatch:
+
+```powershell
+python manage.py run_dispatch
+```
+
+Or create the input series and dispatch outputs in one command:
+
+```powershell
+python manage.py bootstrap_demo --force --with-dispatch
+```
+
+The dispatch results are stored in:
+
+```text
+app_dispatchinterval
+```
+
+Dispatch is derived data. It can be deleted and regenerated from the stored input series.
+
+## Dispatch policy
+
+The dispatch policy is intentionally greedy and explainable:
+
+1. Solar serves hotel load first.
+2. Surplus solar charges the battery if there is available SoC room.
+3. If load remains and the tariff is day-rate, the battery discharges.
+4. Remaining load is imported from the grid.
+5. Solar that cannot be used or stored is curtailed.
+6. Grid export is not allowed.
+
+Battery assumptions:
+
+```text
+capacity: 400 kWh
+max charge power: 200 kW
+max discharge power: 200 kW
+minimum SoC: 10%
+maximum SoC: 95%
+initial SoC: 50%
+round-trip efficiency: 88%
+interval length: 15 minutes
+```
+
+Efficiency convention:
+
+```text
+charge_efficiency = sqrt(0.88)
+discharge_efficiency = sqrt(0.88)
+```
+
+This keeps charge and discharge values as AC-side kW while tracking SoC as internal battery energy.
