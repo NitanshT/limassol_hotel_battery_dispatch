@@ -33,7 +33,7 @@ class BatteryConfig:
 
     min_soc_pct: float = 10.0
     max_soc_pct: float = 95.0
-    initial_soc_pct: float = 50.0
+    initial_soc_pct: float = 10.0
 
     round_trip_efficiency: float = 0.88
     interval_hours: float = 0.25

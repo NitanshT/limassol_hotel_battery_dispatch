@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from django.utils import timezone
 
 from app.models import DispatchInterval
 
@@ -95,12 +96,13 @@ def get_weekly_report() -> WeeklyReport:
         total_solar_kwh += solar_kwh
         curtailed_solar_kwh += interval.curtailed_solar_kw * INTERVAL_HOURS
 
-        labels.append(point.timestamp.strftime("%a %H:%M"))
+        local_timestamp = timezone.localtime(point.timestamp)
+        labels.append(local_timestamp.strftime("%a %H:%M"))
         soc_pct_series.append(round(interval.soc_pct, 2))
 
         dispatch_rows.append(
             DispatchTableRow(
-                timestamp=point.timestamp,
+                timestamp=local_timestamp,
                 solar_kw=point.solar_kw,
                 load_kw=point.load_kw,
                 price_eur_per_kwh=point.grid_price_eur_per_kwh,
