@@ -208,3 +208,32 @@ discharge_efficiency = sqrt(0.88)
 ```
 
 This keeps charge and discharge values as AC-side kW while tracking SoC as internal battery energy.
+
+## Weekly report
+
+The weekly report is available at:
+
+```text
+http://127.0.0.1:8000/reports/weekly/
+```
+
+The view is intentionally thin. It delegates all metric calculation to:
+
+```text
+app/services/reporting.py
+```
+
+The report shows:
+
+- grid spend with the battery
+- grid spend without the battery
+- weekly savings
+- total battery charged kWh
+- total battery discharged kWh
+- solar self-consumption percentage
+- total solar generation
+- curtailed solar
+- SoC curve over the week
+- scrollable 15-minute dispatch schedule
+
+The no-battery counterfactual assumes the same hotel load and PV generation, but no battery. Solar still serves load first, no export is allowed, and surplus PV is curtailed.

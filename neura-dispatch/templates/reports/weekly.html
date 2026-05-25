@@ -2,52 +2,315 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>{{ title }}</title>
+    <title>Weekly Battery Dispatch Report</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
+        :root {
+            --bg: #f6f7f9;
+            --card: #ffffff;
+            --text: #17202a;
+            --muted: #667085;
+            --border: #d0d5dd;
+            --accent: #14532d;
+            --danger: #991b1b;
+        }
+
         body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            margin: 40px;
-            background: #f7f7f8;
-            color: #1f2933;
-        }
-
-        main {
-            max-width: 960px;
-            margin: 0 auto;
-            background: white;
+            margin: 0;
             padding: 32px;
-            border-radius: 16px;
-            box-shadow: 0 8px 30px rgba(15, 23, 42, 0.08);
+            background: var(--bg);
+            color: var(--text);
+            font-family: Arial, Helvetica, sans-serif;
         }
 
-        h1 {
-            margin-top: 0;
+        .container {
+            max-width: 1180px;
+            margin: 0 auto;
         }
 
-        .note {
-            color: #52606d;
+        .header {
+            margin-bottom: 24px;
+        }
+
+        .header h1 {
+            margin: 0 0 8px;
+            font-size: 32px;
+        }
+
+        .header p {
+            margin: 0;
+            color: var(--muted);
             line-height: 1.5;
         }
 
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 18px;
+            box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+        }
+
+        .metric-label {
+            color: var(--muted);
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            font-size: 26px;
+            font-weight: 700;
+        }
+
+        .metric-value.savings {
+            color: var(--accent);
+        }
+
+        .section {
+            margin-top: 24px;
+        }
+
+        .section h2 {
+            margin: 0 0 12px;
+            font-size: 22px;
+        }
+
+        .chart-card {
+            height: 360px;
+        }
+
+        .table-wrap {
+            max-height: 520px;
+            overflow: auto;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: var(--card);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        th,
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        th:first-child,
+        td:first-child {
+            text-align: left;
+            position: sticky;
+            left: 0;
+            background: var(--card);
+        }
+
+        th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: #f2f4f7;
+            color: #344054;
+            font-weight: 700;
+        }
+
+        .error {
+            border: 1px solid #fecaca;
+            background: #fef2f2;
+            color: var(--danger);
+            border-radius: 14px;
+            padding: 18px;
+        }
+
         code {
-            background: #eef2f7;
+            background: #eef2f6;
             padding: 2px 6px;
             border-radius: 6px;
         }
+
+        @media (max-width: 900px) {
+            body {
+                padding: 18px;
+            }
+
+            .grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 560px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
+
 <body>
-<main>
-    <h1>{{ title }}</h1>
+<div class="container">
+    <div class="header">
+        <h1>Weekly Battery Dispatch Report</h1>
+        <p>
+            Limassol hotel behind-the-meter battery dispatch.
+            Metrics are calculated from stored 15-minute time-series and persisted dispatch results.
+        </p>
+    </div>
 
-    <p class="note">
-        Scaffold is running. Next commit will add database models for the 15-minute input time series
-        and dispatch outputs.
-    </p>
+    {% if error_message %}
+        <div class="error">
+            <strong>Report unavailable.</strong>
+            <p>{{ error_message }}</p>
+            <p>Run:</p>
+            <p><code>python manage.py bootstrap_demo --force --with-dispatch</code></p>
+        </div>
+    {% else %}
+        <div class="grid">
+            <div class="card">
+                <div class="metric-label">Grid spend with battery</div>
+                <div class="metric-value">€{{ report.grid_spend_with_battery_eur|floatformat:2 }}</div>
+            </div>
 
-    <p class="note">
-        Required endpoint: <code>/reports/weekly/</code>
-    </p>
-</main>
+            <div class="card">
+                <div class="metric-label">Grid spend without battery</div>
+                <div class="metric-value">€{{ report.grid_spend_without_battery_eur|floatformat:2 }}</div>
+            </div>
+
+            <div class="card">
+                <div class="metric-label">Battery savings</div>
+                <div class="metric-value savings">€{{ report.savings_eur|floatformat:2 }}</div>
+            </div>
+
+            <div class="card">
+                <div class="metric-label">Solar self-consumption</div>
+                <div class="metric-value">{{ report.solar_self_consumption_pct|floatformat:1 }}%</div>
+            </div>
+
+            <div class="card">
+                <div class="metric-label">Battery charged</div>
+                <div class="metric-value">{{ report.total_battery_charged_kwh|floatformat:1 }} kWh</div>
+            </div>
+
+            <div class="card">
+                <div class="metric-label">Battery discharged</div>
+                <div class="metric-value">{{ report.total_battery_discharged_kwh|floatformat:1 }} kWh</div>
+            </div>
+
+            <div class="card">
+                <div class="metric-label">Total solar generation</div>
+                <div class="metric-value">{{ report.total_solar_kwh|floatformat:1 }} kWh</div>
+            </div>
+
+            <div class="card">
+                <div class="metric-label">Curtailed solar</div>
+                <div class="metric-value">{{ report.curtailed_solar_kwh|floatformat:1 }} kWh</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>State of charge over the week</h2>
+            <div class="card chart-card">
+                <canvas id="socChart"></canvas>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Dispatch schedule</h2>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Solar kW</th>
+                        <th>Load kW</th>
+                        <th>Price €/kWh</th>
+                        <th>Solar → Load kW</th>
+                        <th>Charge kW</th>
+                        <th>Discharge kW</th>
+                        <th>Grid kW</th>
+                        <th>Curtailed kW</th>
+                        <th>SoC %</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for row in report.dispatch_rows %}
+                        <tr>
+                            <td>{{ row.timestamp|date:"D H:i" }}</td>
+                            <td>{{ row.solar_kw|floatformat:1 }}</td>
+                            <td>{{ row.load_kw|floatformat:1 }}</td>
+                            <td>{{ row.price_eur_per_kwh|floatformat:2 }}</td>
+                            <td>{{ row.solar_to_load_kw|floatformat:1 }}</td>
+                            <td>{{ row.battery_charge_kw|floatformat:1 }}</td>
+                            <td>{{ row.battery_discharge_kw|floatformat:1 }}</td>
+                            <td>{{ row.grid_import_kw|floatformat:1 }}</td>
+                            <td>{{ row.curtailed_solar_kw|floatformat:1 }}</td>
+                            <td>{{ row.soc_pct|floatformat:1 }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <script>
+            const labels = JSON.parse('{{ chart_labels_json|escapejs }}');
+            const socPct = JSON.parse('{{ soc_pct_series_json|escapejs }}');
+
+            const ctx = document.getElementById("socChart");
+
+            new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: "Battery SoC (%)",
+                            data: socPct,
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.2
+                        }
+                    ]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    responsive: true,
+                    interaction: {
+                        mode: "index",
+                        intersect: false
+                    },
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: "SoC (%)"
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxTicksLimit: 14
+                            }
+                        }
+                    }
+                }
+            });
+        </script>
+    {% endif %}
+</div>
 </body>
 </html>
