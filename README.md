@@ -237,3 +237,21 @@ The report shows:
 - scrollable 15-minute dispatch schedule
 
 The no-battery counterfactual assumes the same hotel load and PV generation, but no battery. Solar still serves load first, no export is allowed, and surplus PV is curtailed.
+
+## Tests
+
+Run the test suite with:
+
+```powershell
+python manage.py test
+```
+
+The tests focus on high-signal business logic:
+
+- dispatch respects SoC limits
+- dispatch respects charge/discharge power limits
+- dispatch does not discharge during night-rate periods
+- dispatch rejects invalid negative inputs
+- reporting calculates grid spend, savings, charged/discharged energy, and solar self-consumption correctly
+
+The tests intentionally avoid over-testing HTML styling or Chart.js behavior.
