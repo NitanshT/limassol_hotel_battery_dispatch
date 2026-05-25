@@ -2,7 +2,7 @@
 
 Small Django service for a behind-the-meter battery dispatch scenario for a Cyprus hotel.
 
-The project models one representative week for a hotel in Limassol with:
+The project models one representative summer week for a hotel in Limassol with:
 
 - 200 kWp rooftop PV
 - 400 kWh / 200 kW LFP battery
@@ -11,13 +11,42 @@ The project models one representative week for a hotel in Limassol with:
 - SQLite persistence
 - Django weekly report at `/reports/weekly/`
 
-The goal is to estimate weekly battery savings, show the dispatch schedule, and generate a simple financier-facing weekly report.
+The goal is to estimate weekly battery savings, show the dispatch schedule, and generate a simple local HTML weekly report.
+
+---
+
+## Quick start
+
+From a fresh clone:
+
+```powershell
+py -3.14 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py bootstrap_demo --force --with-dispatch
+python manage.py runserver
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8000/reports/weekly/
+```
+
+The bootstrap command uses the committed renewables.ninja CSV if it exists at:
+
+```text
+data/renewables_ninja_limassol_hourly.csv
+```
+
+If that file is missing, the app falls back to a deterministic solar profile so the project still runs locally.
 
 ---
 
 ## What the app does
 
-The app creates and stores one representative 15-minute week of:
+The app creates and stores one representative 15-minute week of input data:
 
 - `solar_kw`
 - `load_kw`
@@ -25,7 +54,7 @@ The app creates and stores one representative 15-minute week of:
 
 It then runs a greedy battery dispatch policy and stores one dispatch row per interval.
 
-The report shows:
+The weekly report shows:
 
 - grid spend with battery
 - grid spend without battery
@@ -100,7 +129,7 @@ http://127.0.0.1:8000/reports/weekly/
 
 ---
 
-## One-command project check
+## Verification commands
 
 After setup, this should pass:
 
@@ -139,11 +168,12 @@ app/
 │   ├── tariff.py
 │   ├── solar.py
 │   ├── dispatch.py
-│   ├── data_import.py
+│   ├── data_pipeline.py
 │   └── reporting.py
 ├── management/
 │   └── commands/
 │       ├── bootstrap_demo.py
+│       ├── download_solar_csv.py
 │       └── run_dispatch.py
 └── tests/
     ├── test_dispatch.py
@@ -160,9 +190,10 @@ Responsibilities:
 | `tariff.py` | two-rate time-of-use tariff |
 | `solar.py` | renewables.ninja CSV parsing, hourly-to-15-minute resampling, fallback solar |
 | `dispatch.py` | pure greedy battery dispatch policy |
-| `data_import.py` | database bootstrap and dispatch persistence |
+| `data_pipeline.py` | database bootstrap and dispatch persistence |
 | `reporting.py` | weekly financial and energy metrics |
 | `views.py` | HTTP rendering only |
+| `download_solar_csv.py` | optional renewables.ninja CSV download helper |
 
 This separation keeps business logic out of Django views and makes the dispatch policy testable without the database.
 
@@ -261,7 +292,7 @@ data/renewables_ninja_limassol_hourly.csv
 Expected common CSV columns:
 
 ```text
-time,electricity
+time,local_time,electricity
 ```
 
 The app parses the hourly CSV and resamples to 15-minute intervals by repeating each hourly average value four times.
@@ -272,9 +303,58 @@ This preserves hourly energy:
 hourly_kw × 1 hour = hourly_kw × 0.25 hour × 4
 ```
 
+The committed CSV, if present, should be generated using the renewables.ninja site-level PV API with approximately:
+
+```text
+lat = 34.707130
+lon = 33.022617
+capacity = 200 kW
+dataset = merra2
+system_loss = 0.1
+tracking = 0
+tilt = 30
+azim = 180
+date_from = 2025-07-07
+date_to = 2025-07-13
+format = csv
+local_time = true
+```
+
 If the CSV is not present, the app uses a deterministic fallback solar profile so the reviewer can run the project locally without an API token or committed data file.
 
-The fallback is only a run-local convenience. In a production or final analytical workflow, the renewables.ninja CSV should be used.
+The fallback is only a run-local convenience. The submitted analysis should use the renewables.ninja CSV where available.
+
+---
+
+## Downloading the renewables.ninja CSV
+
+If the CSV needs to be regenerated, set a renewables.ninja API token and run the downloader command.
+
+Windows PowerShell:
+
+```powershell
+$env:RENEWABLES_NINJA_TOKEN="your_token_here"
+python manage.py download_solar_csv
+```
+
+macOS/Linux:
+
+```bash
+export RENEWABLES_NINJA_TOKEN="your_token_here"
+python manage.py download_solar_csv
+```
+
+By default, this saves:
+
+```text
+data/renewables_ninja_limassol_hourly.csv
+```
+
+Then regenerate the stored input and dispatch rows:
+
+```powershell
+python manage.py bootstrap_demo --force --with-dispatch --solar-csv data\renewables_ninja_limassol_hourly.csv
+```
 
 ---
 
@@ -310,9 +390,11 @@ Asia/Nicosia
 | Max discharge power | 200 kW |
 | Minimum SoC | 10% |
 | Maximum SoC | 95% |
-| Initial SoC | 50% |
+| Initial SoC | 10% |
 | Round-trip efficiency | 88% |
 | Dispatch interval | 15 minutes |
+
+The accounting week starts at minimum operational SoC. This avoids giving the battery free pre-charged energy at the beginning of the reporting period.
 
 Efficiency convention:
 
@@ -337,6 +419,8 @@ For each 15-minute interval:
 4. Remaining load is imported from the grid.
 5. Solar that cannot be used or stored is curtailed.
 6. Grid export is not allowed.
+
+This version only charges from surplus PV, not from the grid. That is a deliberate simplification to keep the policy explainable and avoid adding tariff-arbitrage behaviour that would need additional assumptions. A next version would add configurable night-rate grid charging and compare the savings delta.
 
 This is not a mathematical optimizer. That is intentional. For this take-home, the priority is a working, defensible, testable dispatch slice rather than a full linear-programming-based energy management system.
 
@@ -377,6 +461,8 @@ Solar self-consumption is calculated as:
 (total solar generation - curtailed solar) / total solar generation
 ```
 
+The report is a local HTML weekly summary suitable for take-home review. In production, I would add PDF export, versioned report snapshots, and clearer finance-facing formatting.
+
 ---
 
 ## Management commands
@@ -403,6 +489,13 @@ Use a specific renewables.ninja CSV:
 
 ```powershell
 python manage.py bootstrap_demo --force --with-dispatch --solar-csv data\renewables_ninja_limassol_hourly.csv
+```
+
+Download or regenerate the renewables.ninja CSV:
+
+```powershell
+$env:RENEWABLES_NINJA_TOKEN="your_token_here"
+python manage.py download_solar_csv
 ```
 
 ---
@@ -438,6 +531,8 @@ Django
 requests
 ```
 
+`requests` is used only by the optional renewables.ninja downloader command.
+
 Chart.js is loaded from CDN in the report template.
 
 SQLite is used because it is sufficient for a local take-home submission and requires no extra services.
@@ -449,6 +544,10 @@ SQLite is used because it is sufficient for a local take-home submission and req
 ### Greedy dispatch instead of optimization
 
 A greedy policy is easier to explain and test in a short take-home. A production system would likely use an optimization approach with forecasts, tariff windows, degradation costs, and operational constraints.
+
+### PV-only charging
+
+This version only charges from surplus PV. It does not charge from the grid at night. That keeps the policy simple and avoids adding assumptions around tariff arbitrage, but it likely understates the potential value of the battery under a real time-of-use strategy.
 
 ### Fallback solar profile
 
@@ -472,9 +571,9 @@ The dispatch does not account for cycle degradation or warranty constraints. Tha
 
 With another day, I would add:
 
-1. Real renewables.ninja CSV committed to the repo or reproducible API pull instructions.
-2. A what-if form to vary PV size, battery capacity, and tariff assumptions.
-3. A real EAC commercial tariff parser or manually encoded commercial tariff.
+1. A small what-if form to vary PV size, battery capacity, and tariff assumptions.
+2. A real EAC commercial tariff parser or manually encoded commercial tariff.
+3. Configurable night-rate grid charging.
 4. Exportable weekly PDF report.
 5. Battery degradation cost per kWh cycled.
 6. Forecast-aware dispatch rather than purely greedy dispatch.
@@ -496,6 +595,7 @@ AI was used as a senior-engineering accelerator for:
 - dispatch algorithm drafting
 - README wording
 - test case selection
+- audit of modelling assumptions and reviewer-facing tradeoffs
 
 I kept the architecture intentionally lean and reviewed the outputs against the take-home requirements. The main value of AI here was speed: turning the brief into a working, documented, testable slice while still making explicit engineering tradeoffs.
 
