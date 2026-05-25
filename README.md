@@ -69,6 +69,29 @@ The weekly report shows:
 
 ---
 
+## Project root
+
+All commands in this README should be run from the Django project root:
+
+```text
+neura-dispatch/
+```
+
+That is the folder containing:
+
+```text
+manage.py
+requirements.txt
+app/
+config/
+```
+
+If you are in the parent folder, enter the project first:
+
+```powershell
+cd neura-dispatch
+```
+
 ## Local setup on Windows PowerShell
 
 Create and activate a virtual environment:
